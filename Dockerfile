@@ -69,7 +69,8 @@ RUN mkdir /opencv/opencv-4.8.0/build && cd /opencv/opencv-4.8.0/build && \
           .. && \
     make -j$(nproc) && \
     make install && \
-    ldconfig
+    ldconfig && \
+    rm -rf /opencv
 
 # libtorch
 RUN cd / && \
@@ -79,7 +80,7 @@ RUN cd / && \
 ENV Torch_DIR /libtorch/share/cmake/Torch
 
 # repo
-# RUN git clone https://github.com/HuajianUP/Photo-SLAM.git /Photo-SLAM
-RUN mkdir /Photo-SLAM
+RUN git clone https://github.com/gloryhry/Photo-SLAM.git /Photo-SLAM
+# RUN mkdir /Photo-SLAM
 
 WORKDIR /Photo-SLAM
