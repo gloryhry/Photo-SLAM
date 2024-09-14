@@ -48,7 +48,6 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            # gloryh/search_with_ai
             ghcr.io/${{ github.repository }}
 
       - name: Build and push Docker images
