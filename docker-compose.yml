@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  photo_slam:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/gloryhry/Photo-SLAM  # 指定镜像的名称
+    volumes:
+      - ./:/Photo-SLAM
