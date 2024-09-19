@@ -2,12 +2,14 @@ FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Combine all apt-get install commands into one RUN command
 RUN apt-get update && apt-get install -qq -y \
     software-properties-common \
-    wget \
-    gcc-11 \
-    g++-11 \
+    wget && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
+    apt-get install -qq -y gcc-11 g++-11 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100 && \
+    apt-get install -qq -y \
     git \
     build-essential \
     sudo \
@@ -29,12 +31,8 @@ RUN apt-get update && apt-get install -qq -y \
     libavformat-dev \
     libswscale-dev \
     libswresample-dev \
-    libssl-dev && \
-    add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
-    apt-get update && apt-get install -qq -y gcc-11 g++-11 && \
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100 && \
-    rm -rf /var/lib/apt/lists/*
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # cmake
 RUN wget https://github.com/Kitware/CMake/releases/download/v3.22.1/cmake-3.22.1-Linux-x86_64.sh -O /cmake-3.22.1.sh && \
