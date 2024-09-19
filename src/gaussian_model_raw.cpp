@@ -26,13 +26,10 @@ GaussianModel::GaussianModel(const int sh_degree)
         this->device_type_ = torch::kCUDA;
     else
         this->device_type_ = torch::kCPU;
-    
-    //初始化3D高斯对应的张量，包括xyz_、features_dc_、features_rest_、scaling_、rotation_、opacity_、max_radii2D_、xyz_gradient_accum_、denom_
-    // 初始化的时候都是初始化为空的
+
     GAUSSIAN_MODEL_INIT_TENSORS(this->device_type_)
 }
 
-//跟上面是类似的，只是这个是根据参数初始化
 GaussianModel::GaussianModel(const GaussianModelParams &model_params)
     : active_sh_degree_(0), spatial_lr_scale_(0.0),
       lr_delay_steps_(0), lr_delay_mult_(1.0), max_steps_(1000000)
@@ -45,8 +42,6 @@ GaussianModel::GaussianModel(const GaussianModelParams &model_params)
     else
         this->device_type_ = torch::kCPU;
 
-    //初始化3D高斯对应的张量，包括xyz_、features_dc_、features_rest_、scaling_、rotation_、opacity_、max_radii2D_、xyz_gradient_accum_、denom_
-    // 初始化的时候都是初始化为空的
     GAUSSIAN_MODEL_INIT_TENSORS(this->device_type_)
 }
 
@@ -57,7 +52,6 @@ torch::Tensor GaussianModel::getScalingActivation()
 
 torch::Tensor GaussianModel::getRotationActivation()
 {
-    // 调用 torch::nn::functional::normalize() 函数会对输入的旋转张量进行归一化处理，使其每一行（或列）的范数为1，从而得到旋转激活值。最终返回归一化后的张量作为函数的结果。
     return torch::nn::functional::normalize(this->rotation_);
 }
 
@@ -118,30 +112,20 @@ void GaussianModel::setShDegree(const int sh)
 }
 
 void GaussianModel::createFromPcd(
-    std::map<point3D_id_t, Point3D> pcd,//当前缓存或者说获得的彩色点云
-    const float spatial_lr_scale) //场景边界？
+    std::map<point3D_id_t, Point3D> pcd,
+    const float spatial_lr_scale)
 {
     this->spatial_lr_scale_ = spatial_lr_scale;
-
-    //获取缓存的点云的数量
     int num_points = static_cast<int>(pcd.size());
-    //要融合的点云
     torch::Tensor fused_point_cloud = torch::zeros(
         {num_points, 3},
         torch::TensorOptions().dtype(torch::kFloat).device(device_type_));
-    // 要融合的点云的颜色（创建一个形状为 (num_points, 3) 的张量 color，用于存储点云的颜色信息，数据类型为 float，并根据设备类型选择在 CPU 或 GPU 上创建。）
     torch::Tensor color = torch::zeros(
         {num_points, 3},
         torch::TensorOptions().dtype(torch::kFloat).device(device_type_));
-    // 获取彩色点云数据的迭代器。
     auto pcd_it = pcd.begin();
-
-    // 遍历彩色点云数据中的每个点。
     for (int point_idx = 0; point_idx < num_points; ++point_idx) {
-        auto& point = (*pcd_it).second;//获取当前迭代器指向的点云数据。
-
-        // 将点云数据中的点的坐标和颜色信息分别存储到 fused_point_cloud 和 color 张量中。
-        // ++pcd_it;：迭代器指向下一个点。
+        auto& point = (*pcd_it).second;
         fused_point_cloud.index({point_idx, 0}) = point.xyz_(0);
         fused_point_cloud.index({point_idx, 1}) = point.xyz_(1);
         fused_point_cloud.index({point_idx, 2}) = point.xyz_(2);
@@ -151,7 +135,6 @@ void GaussianModel::createFromPcd(
         ++pcd_it;
     }
 
-    //将其转换为sh格式
     torch::Tensor fused_color = sh_utils::RGB2SH(color);
     auto temp = this->max_sh_degree_ + 1;
     torch::Tensor features = torch::zeros(
@@ -202,7 +185,6 @@ void GaussianModel::createFromPcd(
     this->rotation_ = rots.requires_grad_();
     this->opacity_ = opacities.requires_grad_();
 
-    //将这些初始化好的张量放到一个vector中
     GAUSSIAN_MODEL_TENSORS_TO_VEC
 
     this->max_radii2D_ = torch::zeros({this->getXYZ().size(0)}, torch::TensorOptions().device(device_type_));
@@ -290,7 +272,6 @@ void GaussianModel::increasePcd(std::vector<float> points, std::vector<float> co
 // auto time = std::chrono::duration_cast<std::chrono::milliseconds>(time2-time1).count();
 // std::cout << "increasePcd(umap) preparation time: " << time << " ms" <<std::endl;
 
-    //对于新添加的高斯点
     densificationPostfix(
         new_xyz,
         new_features_dc,
@@ -416,57 +397,48 @@ void GaussianModel::applyScaledTransformation(
     scaledTransformationPostfix(this->xyz_, this->scaling_);
 }
 
-// 这个函数主要用于对类中的成员变量 xyz_ 和 scaling_ 进行更新，并将更新后的张量保存到对应的优化器参数组中。
 void GaussianModel::scaledTransformationPostfix(
     torch::Tensor& new_xyz,
     torch::Tensor& new_scaling)
 {
     // param_groups[0] = xyz_
-    // 将传入的 new_xyz 张量替换为优化器中参数组的第一个参数，并将结果保存在 optimizable_xyz 中。
     torch::Tensor optimizable_xyz = this->replaceTensorToOptimizer(new_xyz, 0);
     // param_groups[4] = scaling_
-    // 将传入的 new_scaling 张量替换为优化器中参数组的第五个参数，并将结果保存在 optimizable_scaling 中。
     torch::Tensor optimizable_scaling = this->replaceTensorToOptimizer(new_scaling, 4);
 
-    // 将替换后的优化张量分配给类中的成员变量 xyz_ 和 scaling_。
     this->xyz_ = optimizable_xyz;
     this->scaling_ = optimizable_scaling;
 
-    // 将这些张量添加到类中的成员向量 Tensor_vec_xyz_ 和 Tensor_vec_scaling_ 中。
     this->Tensor_vec_xyz_ = {this->xyz_};
     this->Tensor_vec_scaling_ = {this->scaling_};
 }
 
 void GaussianModel::scaledTransformVisiblePointsOfKeyframe(
-    torch::Tensor& point_not_transformed_flags,//这个点是否经过了变换
-    torch::Tensor& diff_pose,//标记了点的pose差
-    torch::Tensor& kf_world_view_transform,//关键帧world到视觉的变换
-    torch::Tensor& kf_full_proj_transform,//关键帧的projection
-    const int kf_creation_iter,//关键帧创建的代数
+    torch::Tensor& point_not_transformed_flags,
+    torch::Tensor& diff_pose,
+    torch::Tensor& kf_world_view_transform,
+    torch::Tensor& kf_full_proj_transform,
+    const int kf_creation_iter,
     const int stable_num_iter_existence,
     int& num_transformed,
     const float scale)
 {
-    torch::NoGradGuard no_grad;//在创建的范围内，禁用梯度计算
+    torch::NoGradGuard no_grad;
 
-    //获取当前所有的高斯点云
     torch::Tensor points = this->getXYZ();
     torch::Tensor rots = this->getRotationActivation();
     // torch::Tensor scales = this->scaling_;// * scale;
 
-    // 用于比较 exist_since_iter_ 和 kf_creation_iter 之间的差值的绝对值是否小于 stable_num_iter_existence。如果满足条件，则返回 true，否则返回 false。
-    // torch::where(condition, x, y)：这是 torch 中的函数，它根据条件 condition 选择在 x 和 y 之间的元素。如果条件为 true，则选择 x 中对应位置的元素，否则选择 y 中对应位置的元素。
     torch::Tensor point_unstable_flags = torch::where(
         torch::abs(this->exist_since_iter_ - kf_creation_iter) < stable_num_iter_existence,
         true,
         false);
 
-    //对点云进行缩放变换并标记可见的点
     scaleAndTransformThenMarkVisiblePoints(
-        points,//当前所有的高斯点云
+        points,
         rots,
         point_not_transformed_flags,
-        point_unstable_flags,//标记这个点是否稳定（如果存在太久了，认为是不稳定的）
+        point_unstable_flags,
         diff_pose,
         kf_world_view_transform,
         kf_full_proj_transform,
@@ -489,8 +461,6 @@ void GaussianModel::scaledTransformVisiblePointsOfKeyframe(
     // param_groups[4] = scaling_
     // param_groups[5] = rotation_
     // ==================================
-
-    // 标记完可见点后，就要进行替代处理
     torch::Tensor optimizable_xyz = this->replaceTensorToOptimizer(points, 0);
     // torch::Tensor optimizable_scaling = this->replaceTensorToOptimizer(scales, 4);
     torch::Tensor optimizable_rots = this->replaceTensorToOptimizer(rots, 5);
@@ -514,7 +484,6 @@ void GaussianModel::trainingSetup(const GaussianOptimizationParams& training_arg
     adam_options.set_lr(0.0);
     adam_options.eps() = 1e-15;
 
-    //注意用的是vector
     this->optimizer_.reset(new torch::optim::Adam(Tensor_vec_xyz_, adam_options));
     optimizer_->param_groups()[0].options().set_lr(training_args.position_lr_init_ * this->spatial_lr_scale_);
 
@@ -595,44 +564,21 @@ void GaussianModel::resetOpacity()
     this->Tensor_vec_opacity_ = {this->opacity_};
 }
 
-// 替换优化器中特定索引的参数，并更新其对应的状态。
 torch::Tensor GaussianModel::replaceTensorToOptimizer(torch::Tensor& tensor, int tensor_idx)
 {
-    // 从优化器中获取特定索引 tensor_idx 的参数组中的第一个参数，并将其存储在 param 中。
     auto& param = this->optimizer_->param_groups()[tensor_idx].params()[0];
-
-    // 获取优化器的状态字典，并将其存储在 state 中。
     auto& state = optimizer_->state();
-
-    // 参数张量的底层实现中获取键值，并将其转换为字符串，用于在状态字典中唯一标识这个参数。
     auto key = c10::guts::to_string(param.unsafeGetTensorImpl());
-
-    // 从状态字典中获取与参数对应的状态对象，这里假设状态对象是 AdamParamState 类型的，并将其存储在 stored_state 中。
     auto& stored_state = static_cast<torch::optim::AdamParamState&>(*state[key]);
-
-    // 创建一个新的参数状态对象。
     auto new_state = std::make_unique<torch::optim::AdamParamState>();
-
-    // 将新状态对象的步数设置为存储状态对象的步数。
     new_state->step(stored_state.step());
-
-    // 将新状态对象的指数加权平均值初始化为与给定张量相同大小的零张量。
     new_state->exp_avg(torch::zeros_like(tensor));
-    
-    // 将新状态对象的平方指数加权平均值初始化为与给定张量相同大小的零张量。
     new_state->exp_avg_sq(torch::zeros_like(tensor));
     // new_state->max_exp_avg_sq(stored_state.max_exp_avg_sq().clone()); // needed only when options.amsgrad(true), which is false by default
 
-    // 从状态字典中移除之前与参数对应的状态对象。
     state.erase(key);
-
-    // 参数替换为新的张量 tensor，并确保新张量需要梯度。
     param = tensor.requires_grad_();
-
-    // 从新参数张量的底层实现中获取新键值，并将其转换为字符串。
     key = c10::guts::to_string(param.unsafeGetTensorImpl());
-
-    // 将新的参数状态对象与新参数关联，并添加到状态字典中。
     state[key] = std::move(new_state);
 
     auto optimizable_tensors = param;
@@ -646,10 +592,10 @@ void GaussianModel::prunePoints(torch::Tensor& mask)
     // _prune_optimizer
     std::vector<torch::Tensor> optimizable_tensors(6);
     auto& param_groups = this->optimizer_->param_groups();
-    auto& state = this->optimizer_->state();//获取优化器的状态
-    for (int group_idx = 0; group_idx < 6; ++group_idx) {//遍历对应的6个参数组
-        auto& param = param_groups[group_idx].params()[0];//获取对应参数组的参数
-        auto key = c10::guts::to_string(param.unsafeGetTensorImpl());//获取参数的键值
+    auto& state = this->optimizer_->state();
+    for (int group_idx = 0; group_idx < 6; ++group_idx) {
+        auto& param = param_groups[group_idx].params()[0];
+        auto key = c10::guts::to_string(param.unsafeGetTensorImpl());
         if (state.find(key) != state.end()) {
             auto& stored_state = static_cast<torch::optim::AdamParamState&>(*state[key]);
             auto new_state = std::make_unique<torch::optim::AdamParamState>();
@@ -695,7 +641,6 @@ void GaussianModel::prunePoints(torch::Tensor& mask)
     this->max_radii2D_ = this->max_radii2D_.index({valid_points_mask});
 }
 
-//通过此函数来添加新的高斯点
 void GaussianModel::densificationPostfix(
     torch::Tensor& new_xyz,
     torch::Tensor& new_features_dc,

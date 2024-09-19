@@ -92,24 +92,21 @@ void transformPoints(
     }
 }
 
-// 对点云进行缩放变换并标记可见的点
 void scaleAndTransformThenMarkVisiblePoints(
-    torch::Tensor& points,//当前所有的点
+    torch::Tensor& points,
     torch::Tensor& rots,
-    torch::Tensor& point_not_transformed_mask,//标记这个点是否已经被变换
-    torch::Tensor& point_unstable_mask,//标记这个点是否稳定
-    torch::Tensor& transformmatrix,//变换矩阵
-    torch::Tensor& viewmatrix,//视角矩阵
-    torch::Tensor& projmatrix,//投影矩阵
+    torch::Tensor& point_not_transformed_mask,
+    torch::Tensor& point_unstable_mask,
+    torch::Tensor& transformmatrix,
+    torch::Tensor& viewmatrix,
+    torch::Tensor& projmatrix,
     int& num_transformed,
     const float scale)
 {
-    // 确认一下点云的维度
     if (points.ndimension() != 2 || points.size(1) != 3) {
         AT_ERROR("points must have dimensions (num_points, 3)");
     }
 
-    //通过投影矩阵和视角矩阵来标记可见的点（其实也就是进行渲染~）
     torch::Tensor present = markVisible(
         points,
         viewmatrix,
@@ -119,10 +116,9 @@ void scaleAndTransformThenMarkVisiblePoints(
     if (point_not_transformed_mask.size(0) !=  num_points || point_unstable_mask.size(0) != num_points) {
         AT_ERROR("points_mask must have dimensions (num_points)");
     }
-    // 而final_mask就等于这三个mask的结合
     torch::Tensor final_mask = torch::logical_and(point_not_transformed_mask, point_unstable_mask);
     final_mask = torch::logical_and(final_mask, present);
-    num_transformed += final_mask.sum().item<int>();//计算 final_mask 张量中非零元素的数量，并将其转换为整数类型，然后加到变量 num_transformed 上。
+    num_transformed += final_mask.sum().item<int>();
     const int P = points.size(0);
 
     if (P != 0) {

@@ -2,9 +2,18 @@ version: '3'
 
 services:
   photo_slam:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ghcr.io/gloryhry/photo-slam  # 指定镜像的名称
+    image: gloryh/photo-slam:v0.0.1
+    container_name: photo_slam_container  
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     volumes:
       - ./:/Photo-SLAM
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+      - NVIDIA_VISIBLE_DEVICES=1
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    runtime: nvidia
+    tty: true
+    stdin_open: true
