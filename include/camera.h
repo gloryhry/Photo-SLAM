@@ -68,6 +68,18 @@ public:
         }
     }
 
+    /**
+     * @brief 初始化去畸变和重映射的映射表和掩码。
+     * 
+     * 该函数首先使用 `cv::initUndistortRectifyMap` 生成去畸变和重映射的映射表。
+     * 然后，生成一个白色的图像并进行去畸变处理，得到去畸变掩码。
+     * 如果启用了高斯金字塔训练，还会对去畸变掩码进行高斯金字塔处理，并将其上传到GPU。
+     * 
+     * @param old_camera_matrix 旧的相机内参矩阵。
+     * @param old_size 旧的图像尺寸。
+     * @param new_camera_matrix 新的相机内参矩阵。
+     * @param do_gaus_pyramid_training 是否进行高斯金字塔训练。
+     */
     inline void initUndistortRectifyMapAndMask(
         cv::InputArray old_camera_matrix,
         const cv::Size old_size,
@@ -115,25 +127,25 @@ public:
     }
 
 public:
-    camera_id_t camera_id_ = 0U;
+    camera_id_t camera_id_ = 0U; // 相机ID
 
-    int model_id_ = 0;
+    int model_id_ = 0; // 相机模型ID
 
-    std::size_t width_ = 0UL;
-    std::size_t height_ = 0UL;
+    std::size_t width_ = 0UL; // 图像宽度
+    std::size_t height_ = 0UL; // 图像高度
 
-    int num_gaus_pyramid_sub_levels_ = 0;
-    std::vector<std::size_t> gaus_pyramid_width_;
-    std::vector<std::size_t> gaus_pyramid_height_;
+    int num_gaus_pyramid_sub_levels_ = 0; // 高斯金字塔子层级数量
+    std::vector<std::size_t> gaus_pyramid_width_; // 高斯金字塔每层的宽度
+    std::vector<std::size_t> gaus_pyramid_height_; // 高斯金字塔每层的高度
 
-    std::vector<double> params_;
+    std::vector<double> params_; // 相机参数
 
-    bool prior_focal_length_ = false;
+    bool prior_focal_length_ = false; // 是否优先考虑焦距
 
-    float stereo_bf_ = 0.0f;
+    float stereo_bf_ = 0.0f; // 立体视觉基线乘以焦距
 
-    cv::Mat dist_coeff_ = (cv::Mat_<float>(1, 4) << 0.0f, 0.0f, 0.0f, 0.0f);
-    cv::Mat undistort_map1, undistort_map2;
-    cv::Mat undistort_mask;
-    std::vector<torch::Tensor> gaus_pyramid_undistort_mask_;
+    cv::Mat dist_coeff_ = (cv::Mat_<float>(1, 4) << 0.0f, 0.0f, 0.0f, 0.0f); // 畸变系数
+    cv::Mat undistort_map1, undistort_map2; // 去畸变映射表
+    cv::Mat undistort_mask; // 去畸变掩码
+    std::vector<torch::Tensor> gaus_pyramid_undistort_mask_; // 高斯金字塔去畸变掩码
 };

@@ -77,20 +77,20 @@ public:
         float densify_grad_threshold = 0.0002f);
 
 public:
-    int iterations_;
-    float position_lr_init_;
-    float position_lr_final_;
-    float position_lr_delay_mult_;
-    int position_lr_max_steps_;
-    float feature_lr_;
-    float opacity_lr_;
-    float scaling_lr_;
-    float rotation_lr_;
-    float percent_dense_;
-    float lambda_dssim_;
-    int densification_interval_;
-    int opacity_reset_interval_;
-    int densify_from_iter_;
-    int densify_until_iter_;
-    float densify_grad_threshold_;
+    int iterations_; // 迭代次数
+    float position_lr_init_; // 初始位置学习率
+    float position_lr_final_; // 最终位置学习率
+    float position_lr_delay_mult_; // 位置学习率延迟乘数
+    int position_lr_max_steps_; // 位置学习率最大步数
+    float feature_lr_; // 特征学习率
+    float opacity_lr_; // 不透明度学习率
+    float scaling_lr_; // 缩放学习率
+    float rotation_lr_; // 旋转学习率
+    float percent_dense_; // 密集百分比
+    float lambda_dssim_; // DSSIM损失权重
+    int densification_interval_; // 密集化间隔
+    int opacity_reset_interval_; // 不透明度重置间隔
+    int densify_from_iter_; // 从第几次迭代开始密集化
+    int densify_until_iter_; // 到第几次迭代结束密集化
+    float densify_grad_threshold_; // 密集化梯度阈值
 };

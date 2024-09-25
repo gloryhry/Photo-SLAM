@@ -65,15 +65,15 @@ inline torch::Tensor eval_sh(int deg, torch::Tensor& sh, torch::Tensor& dirs)
 {
 
     // """
-    // Evaluate spherical harmonics at unit directions
-    // using hardcoded SH polynomials.
-    // Works with torch/np/jnp.
-    // ... Can be 0 or more batch dimensions.
-    // Args:
-    //     deg: int SH deg. Currently, 0-3 supported
-    //     sh: jnp.ndarray SH coeffs [..., C, (deg + 1) ** 2]
-    //     dirs: jnp.ndarray unit directions [..., 3]
-    // Returns:
+    // 在单位方向上评估球谐函数
+    // 使用硬编码的SH多项式。
+    // 适用于torch/np/jnp。
+    // ... 可以有0个或更多批量维度。
+    // 参数:
+    //     deg: int 目前SH的度数。支持0-3
+    //     sh: jnp.ndarray SH系数 [..., C, (deg + 1) ** 2]
+    //     dirs: jnp.ndarray 单位方向 [..., 3]
+    // 返回:
     //     [..., C]
     // """
     assert(deg <= 4 && deg >= 0);

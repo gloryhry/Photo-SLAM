@@ -588,16 +588,6 @@ void GaussianMapper::run()
     signalStop();
 }
 
-void GaussianMapper::run()
-{
-    // First loop; 在满足初始化条件时创建一个高斯建图
-    while(!isStopped())
-    {
-        if()
-    }
-}
-
-
 void GaussianMapper::trainColmap()
 {
     // Prepare multi resolution images for training
